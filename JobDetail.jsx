@@ -1,0 +1,405 @@
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { ArrowLeft, Trash2, Plus, FileText, ChevronDown, Pencil, X } from 'lucide-react'
+import CostSummaryBox from '../components/CostSummaryBox'
+import { calculateJobCosts, calculateProfit, formatCurrency, formatDate } from '../lib/calculations'
+
+const statusOptions = [
+  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
+  { value: 'completed', label: 'Completed', color: 'bg-purple-100 text-purple-700' },
+  { value: 'invoiced', label: 'Invoiced', color: 'bg-orange-100 text-orange-700' },
+  { value: 'paid', label: 'Paid', color: 'bg-green-100 text-green-700' },
+]
+
+function MaterialFormInline({ onSave, onCancel }) {
+  const [name, setName] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [unit, setUnit] = useState('')
+  const [unitCost, setUnitCost] = useState('')
+
+  const total = (parseFloat(quantity) || 0) * (parseFloat(unitCost) || 0)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!name.trim() || !quantity || !unitCost) return
+    onSave({
+      name: name.trim(),
+      quantity: parseFloat(quantity),
+      unit: unit.trim() || 'ea',
+      unit_cost: parseFloat(unitCost),
+      total_cost: total
+    })
+  }
+
+  return (
+    <div className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-200">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-semibold text-navy-900">Add Material</h4>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 p-1"><X size={20} /></button>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Material name" className="input-field" required />
+        <div className="grid grid-cols-3 gap-2">
+          <input type="number" step="0.01" min="0" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="Qty" className="input-field" required />
+          <input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="Unit" className="input-field" />
+          <input type="number" step="0.01" min="0" value={unitCost} onChange={e => setUnitCost(e.target.value)} placeholder="$/unit" className="input-field" required />
+        </div>
+        <div className="bg-white rounded-lg p-3 border border-gray-200 flex justify-between">
+          <span className="text-sm text-gray-500">Total</span>
+          <span className="font-bold text-navy-900">${total.toFixed(2)}</span>
+        </div>
+        <button type="submit" className="btn-primary"><Plus size={18} /> Save Material</button>
+      </form>
+    </div>
+  )
+}
+
+function LaborFormInline({ onSave, onCancel, defaultRate }) {
+  const [workerName, setWorkerName] = useState('')
+  const [hours, setHours] = useState('')
+  const [hourlyRate, setHourlyRate] = useState(defaultRate ? String(defaultRate) : '')
+  const [workDate, setWorkDate] = useState(new Date().toISOString().split('T')[0])
+
+  const total = (parseFloat(hours) || 0) * (parseFloat(hourlyRate) || 0)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!workerName.trim() || !hours || !hourlyRate) return
+    onSave({
+      worker_name: workerName.trim(),
+      hours: parseFloat(hours),
+      hourly_rate: parseFloat(hourlyRate),
+      total_cost: total,
+      work_date: workDate
+    })
+  }
+
+  return (
+    <div className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-200">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-semibold text-navy-900">Add Labor</h4>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 p-1"><X size={20} /></button>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)} placeholder="Worker name" className="input-field" required />
+        <input type="date" value={workDate} onChange={e => setWorkDate(e.target.value)} className="input-field" required />
+        <div className="grid grid-cols-2 gap-2">
+          <input type="number" step="0.25" min="0" value={hours} onChange={e => setHours(e.target.value)} placeholder="Hours" className="input-field" required />
+          <input type="number" step="0.01" min="0" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="$/hr" className="input-field" required />
+        </div>
+        <div className="bg-white rounded-lg p-3 border border-gray-200 flex justify-between">
+          <span className="text-sm text-gray-500">Total</span>
+          <span className="font-bold text-navy-900">${total.toFixed(2)}</span>
+        </div>
+        <button type="submit" className="btn-primary"><Plus size={18} /> Save Labor</button>
+      </form>
+    </div>
+  )
+}
+
+function JobDetail() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [job, setJob] = useState(null)
+  const [materials, setMaterials] = useState([])
+  const [labor, setLabor] = useState([])
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showMaterialForm, setShowMaterialForm] = useState(false)
+  const [showLaborForm, setShowLaborForm] = useState(false)
+  const [editingJob, setEditingJob] = useState(false)
+  const [editForm, setEditForm] = useState({})
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => { fetchData() }, [id])
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      setProfile(profileData)
+
+      const { data: jobData } = await supabase.from('jobs').select('*').eq('id', id).single()
+      setJob(jobData)
+      setEditForm(jobData || {})
+
+      const { data: materialsData } = await supabase.from('materials').select('*').eq('job_id', id).order('created_at', { ascending: true })
+      setMaterials(materialsData || [])
+
+      const { data: laborData } = await supabase.from('labor_entries').select('*').eq('job_id', id).order('work_date', { ascending: true })
+      setLabor(laborData || [])
+    } catch (err) {
+      console.error('Error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      const { error } = await supabase.from('jobs').update({ status: newStatus }).eq('id', id)
+      if (error) throw error
+      setJob(prev => ({ ...prev, status: newStatus }))
+      showToast('Status updated')
+    } catch (err) {
+      showToast('Error updating status', 'error')
+    }
+  }
+
+  const handleAddMaterial = async (materialData) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { error } = await supabase.from('materials').insert([{ ...materialData, job_id: id, user_id: user.id }])
+      if (error) throw error
+      setShowMaterialForm(false)
+      fetchData()
+      showToast('Material added')
+    } catch (err) {
+      showToast('Error adding material', 'error')
+    }
+  }
+
+  const handleDeleteMaterial = async (materialId) => {
+    if (!confirm('Delete this material?')) return
+    try {
+      const { error } = await supabase.from('materials').delete().eq('id', materialId)
+      if (error) throw error
+      fetchData()
+      showToast('Material deleted')
+    } catch (err) {
+      showToast('Error deleting material', 'error')
+    }
+  }
+
+  const handleAddLabor = async (laborData) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { error } = await supabase.from('labor_entries').insert([{ ...laborData, job_id: id, user_id: user.id }])
+      if (error) throw error
+      setShowLaborForm(false)
+      fetchData()
+      showToast('Labor entry added')
+    } catch (err) {
+      showToast('Error adding labor', 'error')
+    }
+  }
+
+  const handleDeleteLabor = async (laborId) => {
+    if (!confirm('Delete this labor entry?')) return
+    try {
+      const { error } = await supabase.from('labor_entries').delete().eq('id', laborId)
+      if (error) throw error
+      fetchData()
+      showToast('Labor entry deleted')
+    } catch (err) {
+      showToast('Error deleting labor', 'error')
+    }
+  }
+
+  const handleSaveJobEdit = async () => {
+    try {
+      const { error } = await supabase.from('jobs').update({
+        job_name: editForm.job_name,
+        client_name: editForm.client_name,
+        client_phone: editForm.client_phone,
+        client_email: editForm.client_email,
+        job_address: editForm.job_address,
+        bid_amount: editForm.bid_amount ? parseFloat(editForm.bid_amount) : null,
+        notes: editForm.notes,
+      }).eq('id', id)
+      if (error) throw error
+      setJob(editForm)
+      setEditingJob(false)
+      showToast('Job updated')
+    } catch (err) {
+      showToast('Error updating job', 'error')
+    }
+  }
+
+  const { totalMaterialCost, totalLaborCost, totalJobCost } = calculateJobCosts(materials, labor)
+  const { profit, margin, hasBid, isProfitable } = calculateProfit(job?.bid_amount, totalJobCost)
+  const currentStatus = statusOptions.find(s => s.value === job?.status)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy-900"></div>
+      </div>
+    )
+  }
+
+  if (!job) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Job not found</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-8">
+      {toast && (
+        <div className="fixed top-4 left-4 right-4 flex justify-center z-50">
+          <div className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-navy-900 text-white'}`}>
+            {toast.message}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-navy-900 text-white px-4 pt-8 pb-6 rounded-b-3xl">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-lg hover:bg-white/10">
+              <ArrowLeft size={24} />
+            </button>
+            <h1 className="text-xl font-bold truncate">{job.job_name}</h1>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-300 text-sm">{job.client_name}</p>
+              <p className="text-gray-400 text-xs">{job.job_address}</p>
+            </div>
+            <div className="relative">
+              <select
+                value={job.status}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className={`appearance-none pl-3 pr-8 py-2 rounded-lg text-sm font-semibold cursor-pointer ${currentStatus?.color || 'bg-gray-100 text-gray-700'}`}
+              >
+                {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+              <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-4 space-y-6">
+        {editingJob ? (
+          <div className="card space-y-3">
+            <h3 className="font-bold text-navy-900">Edit Job Details</h3>
+            <input type="text" value={editForm.job_name || ''} onChange={e => setEditForm(prev => ({ ...prev, job_name: e.target.value }))} className="input-field" placeholder="Job Name" />
+            <input type="text" value={editForm.client_name || ''} onChange={e => setEditForm(prev => ({ ...prev, client_name: e.target.value }))} className="input-field" placeholder="Client Name" />
+            <input type="text" value={editForm.client_phone || ''} onChange={e => setEditForm(prev => ({ ...prev, client_phone: e.target.value }))} className="input-field" placeholder="Client Phone" />
+            <input type="email" value={editForm.client_email || ''} onChange={e => setEditForm(prev => ({ ...prev, client_email: e.target.value }))} className="input-field" placeholder="Client Email" />
+            <input type="text" value={editForm.job_address || ''} onChange={e => setEditForm(prev => ({ ...prev, job_address: e.target.value }))} className="input-field" placeholder="Job Address" />
+            <input type="number" step="0.01" value={editForm.bid_amount || ''} onChange={e => setEditForm(prev => ({ ...prev, bid_amount: e.target.value }))} className="input-field" placeholder="Bid Amount" />
+            <textarea value={editForm.notes || ''} onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))} className="input-field resize-none" rows={2} placeholder="Notes" />
+            <div className="flex gap-2">
+              <button onClick={handleSaveJobEdit} className="btn-primary flex-1">Save</button>
+              <button onClick={() => { setEditingJob(false); setEditForm(job) }} className="btn-secondary flex-1">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs text-gray-500">Start Date</p>
+                <p className="font-medium text-sm">{formatDate(job.start_date)}</p>
+              </div>
+              <button onClick={() => setEditingJob(true)} className="p-2 text-gray-400 hover:text-navy-900">
+                <Pencil size={18} />
+              </button>
+            </div>
+            {job.notes && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500">Notes</p>
+                <p className="text-sm text-gray-700">{job.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Materials */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-navy-900 text-lg">Materials</h2>
+            <button onClick={() => setShowMaterialForm(!showMaterialForm)} className="flex items-center gap-1 text-sm font-semibold text-navy-900 bg-white px-3 py-2 rounded-lg border border-gray-200">
+              <Plus size={16} /> Add
+            </button>
+          </div>
+          {showMaterialForm && <MaterialFormInline onSave={handleAddMaterial} onCancel={() => setShowMaterialForm(false)} />}
+          {materials.length === 0 ? (
+            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No materials added yet</p></div>
+          ) : (
+            <div className="space-y-2">
+              {materials.map(m => (
+                <div key={m.id} className="card flex justify-between items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-navy-900 truncate">{m.name}</p>
+                    <p className="text-xs text-gray-500">{m.quantity} {m.unit} @ {formatCurrency(m.unit_cost)}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-navy-900">{formatCurrency(m.total_cost)}</span>
+                    <button onClick={() => handleDeleteMaterial(m.id)} className="p-2 text-gray-400 hover:text-loss rounded-lg"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-between px-2 pt-2 border-t border-gray-200">
+                <span className="font-semibold text-sm text-gray-600">Materials Total</span>
+                <span className="font-bold text-navy-900">{formatCurrency(totalMaterialCost)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Labor */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-navy-900 text-lg">Labor</h2>
+            <button onClick={() => setShowLaborForm(!showLaborForm)} className="flex items-center gap-1 text-sm font-semibold text-navy-900 bg-white px-3 py-2 rounded-lg border border-gray-200">
+              <Plus size={16} /> Add
+            </button>
+          </div>
+          {showLaborForm && <LaborFormInline onSave={handleAddLabor} onCancel={() => setShowLaborForm(false)} defaultRate={profile?.default_hourly_rate} />}
+          {labor.length === 0 ? (
+            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No labor entries added yet</p></div>
+          ) : (
+            <div className="space-y-2">
+              {labor.map(entry => (
+                <div key={entry.id} className="card flex justify-between items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-navy-900 truncate">{entry.worker_name}</p>
+                    <p className="text-xs text-gray-500">{formatDate(entry.work_date)} — {entry.hours} hrs @ {formatCurrency(entry.hourly_rate)}/hr</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-navy-900">{formatCurrency(entry.total_cost)}</span>
+                    <button onClick={() => handleDeleteLabor(entry.id)} className="p-2 text-gray-400 hover:text-loss rounded-lg"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-between px-2 pt-2 border-t border-gray-200">
+                <span className="font-semibold text-sm text-gray-600">Labor Total</span>
+                <span className="font-bold text-navy-900">{formatCurrency(totalLaborCost)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <CostSummaryBox
+          materialsCost={totalMaterialCost}
+          laborCost={totalLaborCost}
+          bidAmount={job.bid_amount}
+          profit={profit}
+          margin={margin}
+          hasBid={hasBid}
+          isProfitable={isProfitable}
+        />
+
+        <Link to={`/jobs/${id}/invoice`} className="btn-primary block text-center">
+          <FileText size={18} /> Generate Invoice PDF
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+export default JobDetail
