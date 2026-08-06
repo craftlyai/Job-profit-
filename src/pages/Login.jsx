@@ -19,25 +19,20 @@ function Login() {
 
     try {
       if (isSignUp) {
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        // Pass profile data in options.data — the trigger reads raw_user_meta_data
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              full_name: fullName,
+              business_name: businessName,
+            },
+          },
         })
 
         if (signUpError) throw signUpError
-
-        if (data.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: data.user.id,
-                full_name: fullName,
-                business_name: businessName,
-              }
-            ])
-          if (profileError) throw profileError
-        }
+        // Trigger auto-creates the profile row. No manual insert needed.
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -163,3 +158,4 @@ function Login() {
 }
 
 export default Login
+                
