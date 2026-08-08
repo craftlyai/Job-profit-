@@ -4,7 +4,7 @@ import { Home, Briefcase, PlusCircle, FileText, User } from 'lucide-react'
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
-  { path: '/', label: 'Jobs', icon: Briefcase },
+  { path: '/jobs', label: 'Jobs', icon: Briefcase },
   { path: '/jobs/new', label: 'Add Job', icon: PlusCircle },
   { path: '/', label: 'Invoice', icon: FileText },
   { path: '/profile', label: 'Profile', icon: User },
@@ -16,7 +16,7 @@ function Navbar() {
 
   const isActive = (item) => {
     if (item.path === '/jobs/new') return currentPath === '/jobs/new'
-    if (item.label === 'Jobs') return currentPath === '/' && !currentPath.includes('invoice')
+    if (item.label === 'Jobs') return currentPath === '/jobs'
     if (item.label === 'Home') return currentPath === '/'
     if (item.label === 'Invoice') return currentPath.includes('invoice')
     if (item.label === 'Profile') return currentPath === '/profile'
@@ -48,3 +48,4 @@ function Navbar() {
 }
 
 export default Navbar
+                
