@@ -27,8 +27,30 @@ function CreateJob() {
     setLoading(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      // Use getUser() to ensure we have a valid session
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        alert('You must be logged in to create a job.')
+        navigate('/login')
+        return
+      }
+
+      // Verify profile exists (optional safety check)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile) {
+        // Auto-create profile if missing
+        await supabase.from('profiles').insert({
+          id: user.id,
+          full_name: '',
+          business_name: ''
+        })
+      }
 
       const { data, error } = await supabase
         .from('jobs')
@@ -55,6 +77,7 @@ function CreateJob() {
       }
     } catch (err) {
       alert('Error creating job: ' + err.message)
+      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -190,3 +213,4 @@ function CreateJob() {
 }
 
 export default CreateJob
+      
