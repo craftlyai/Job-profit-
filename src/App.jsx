@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Jobs from './pages/Jobs'
 import CreateJob from './pages/CreateJob'
 import JobDetail from './pages/JobDetail'
 import InvoiceView from './pages/InvoiceView'
@@ -43,6 +44,10 @@ function App() {
           element={session ? <Dashboard /> : <Navigate to="/login" replace />} 
         />
         <Route 
+          path="/jobs" 
+          element={session ? <Jobs /> : <Navigate to="/login" replace />} 
+        />
+        <Route 
           path="/login" 
           element={!session ? <Login /> : <Navigate to="/" replace />} 
         />
@@ -68,4 +73,3 @@ function App() {
 }
 
 export default App
-      
