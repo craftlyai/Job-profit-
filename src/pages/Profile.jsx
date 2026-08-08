@@ -11,6 +11,7 @@ function Profile() {
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [toast, setToast] = useState(null)
+  const [userId, setUserId] = useState(null)
   const [formData, setFormData] = useState({
     full_name: '',
     business_name: '',
@@ -20,7 +21,9 @@ function Profile() {
   })
   const [logoUrl, setLogoUrl] = useState(null)
 
-  useEffect(() => { fetchProfile() }, [])
+  useEffect(() => {
+    fetchProfile()
+  }, [])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -30,27 +33,48 @@ function Profile() {
   const fetchProfile = async () => {
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      // Use getUser() - validates token with server
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        console.error('No authenticated user:', userError)
+        navigate('/login')
+        return
+      }
 
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (error) throw error
+      setUserId(user.id)
 
-      setProfile(data)
-      setFormData({
-        full_name: data.full_name || '',
-        business_name: data.business_name || '',
-        phone: data.phone || '',
-        default_hourly_rate: data.default_hourly_rate || '',
-        payment_instructions: data.payment_instructions || '',
-      })
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
 
-      if (data.logo_path) {
-        const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(data.logo_path)
-        setLogoUrl(publicUrl)
+      if (error) {
+        console.error('Profile fetch error:', error)
+        // If no profile row exists, create one now as fallback
+        if (error.code === 'PGRST116') {
+          const { error: insertErr } = await supabase
+            .from('profiles')
+            .insert({ id: user.id, full_name: '', business_name: '' })
+          if (insertErr) console.error('Fallback insert failed:', insertErr)
+        }
+      } else if (data) {
+        setProfile(data)
+        setFormData({
+          full_name: data.full_name || '',
+          business_name: data.business_name || '',
+          phone: data.phone || '',
+          default_hourly_rate: data.default_hourly_rate || '',
+          payment_instructions: data.payment_instructions || '',
+        })
+        if (data.logo_path) {
+          const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(data.logo_path)
+          setLogoUrl(publicUrl)
+        }
       }
     } catch (err) {
-      console.error('Error fetching profile:', err)
+      console.error('Unexpected error:', err)
     } finally {
       setLoading(false)
     }
@@ -62,21 +86,26 @@ function Profile() {
   }
 
   const handleSave = async () => {
+    if (!userId) {
+      showToast('Not authenticated', 'error')
+      return
+    }
     setSaving(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      const { error } = await supabase.from('profiles').update({
+      const { error } = await supabase.from('profiles').upsert({
+        id: userId,
         full_name: formData.full_name,
         business_name: formData.business_name,
         phone: formData.phone || null,
         default_hourly_rate: formData.default_hourly_rate ? parseFloat(formData.default_hourly_rate) : null,
         payment_instructions: formData.payment_instructions || null,
-      }).eq('id', user.id)
+      })
 
       if (error) throw error
       showToast('Profile saved successfully')
     } catch (err) {
-      showToast('Error saving profile', 'error')
+      showToast('Error saving profile: ' + err.message, 'error')
+      console.error(err)
     } finally {
       setSaving(false)
     }
@@ -84,19 +113,18 @@ function Profile() {
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0]
-    if (!file) return
+    if (!file || !userId) return
 
     setUploadingLogo(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-      const filePath = `${user.id}/${fileName}`
+      const fileName = `${userId}-${Date.now()}.${fileExt}`
+      const filePath = `${userId}/${fileName}`
 
       const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, file, { upsert: true })
       if (uploadError) throw uploadError
 
-      const { error: updateError } = await supabase.from('profiles').update({ logo_path: filePath }).eq('id', user.id)
+      const { error: updateError } = await supabase.from('profiles').update({ logo_path: filePath }).eq('id', userId)
       if (updateError) throw updateError
 
       const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(filePath)
@@ -214,3 +242,4 @@ function Profile() {
 }
 
 export default Profile
+  
