@@ -12,9 +12,11 @@ function CreateJob() {
     client_phone: '',
     client_email: '',
     job_address: '',
-    start_date: new Date().toISOString().split('T')[0],
+    visit_date: '',
+    start_date: '',
+    end_date: '',
     bid_amount: '',
-    notes: '',
+    work_description: '',
   })
 
   const handleChange = (e) => {
@@ -27,30 +29,8 @@ function CreateJob() {
     setLoading(true)
 
     try {
-      // Use getUser() to ensure we have a valid session
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !user) {
-        alert('You must be logged in to create a job.')
-        navigate('/login')
-        return
-      }
-
-      // Verify profile exists (optional safety check)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError || !profile) {
-        // Auto-create profile if missing
-        await supabase.from('profiles').insert({
-          id: user.id,
-          full_name: '',
-          business_name: ''
-        })
-      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
 
       const { data, error } = await supabase
         .from('jobs')
@@ -62,9 +42,11 @@ function CreateJob() {
             client_phone: formData.client_phone || null,
             client_email: formData.client_email || null,
             job_address: formData.job_address || null,
-            start_date: formData.start_date,
+            visit_date: formData.visit_date || null,
+            start_date: formData.start_date || null,
+            end_date: formData.end_date || null,
             bid_amount: formData.bid_amount ? parseFloat(formData.bid_amount) : null,
-            notes: formData.notes || null,
+            work_description: formData.work_description || null,
             status: 'in_progress',
           }
         ])
@@ -77,7 +59,6 @@ function CreateJob() {
       }
     } catch (err) {
       alert('Error creating job: ' + err.message)
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -159,42 +140,62 @@ function CreateJob() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Work Requirement / Description</label>
+            <textarea
+              name="work_description"
+              value={formData.work_description}
+              onChange={handleChange}
+              placeholder="Describe the work required for this job..."
+              rows={4}
+              className="input-field resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date</label>
+              <input
+                type="date"
+                name="visit_date"
+                value={formData.visit_date}
+                onChange={handleChange}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
                 type="date"
                 name="start_date"
                 value={formData.start_date}
                 onChange={handleChange}
                 className="input-field"
-                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bid Amount ($)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="bid_amount"
-                value={formData.bid_amount}
+                type="date"
+                name="end_date"
+                value={formData.end_date}
                 onChange={handleChange}
-                placeholder="0.00"
                 className="input-field"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea
-              name="notes"
-              value={formData.notes}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bid Amount ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              name="bid_amount"
+              value={formData.bid_amount}
               onChange={handleChange}
-              placeholder="Any additional details..."
-              rows={3}
-              className="input-field resize-none"
+              placeholder="0.00"
+              className="input-field"
             />
           </div>
 
@@ -213,4 +214,4 @@ function CreateJob() {
 }
 
 export default CreateJob
-      
+            
