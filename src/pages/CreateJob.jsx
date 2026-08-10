@@ -15,6 +15,7 @@ function CreateJob() {
     visit_date: '',
     start_date: '',
     end_date: '',
+    estimated_amount: '',
     bid_amount: '',
     work_description: '',
   })
@@ -45,6 +46,7 @@ function CreateJob() {
             visit_date: formData.visit_date || null,
             start_date: formData.start_date || null,
             end_date: formData.end_date || null,
+            estimated_amount: formData.estimated_amount ? parseFloat(formData.estimated_amount) : null,
             bid_amount: formData.bid_amount ? parseFloat(formData.bid_amount) : null,
             work_description: formData.work_description || null,
             status: 'in_progress',
@@ -185,18 +187,35 @@ function CreateJob() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bid Amount ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              name="bid_amount"
-              value={formData.bid_amount}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="input-field"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Amount ($)</label>
+              <p className="text-xs text-gray-400 mb-1">Approximate quote before site visit</p>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="estimated_amount"
+                value={formData.estimated_amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Final / Agreed Amount ($)</label>
+              <p className="text-xs text-gray-400 mb-1">Actual amount after discussion</p>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="bid_amount"
+                value={formData.bid_amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                className="input-field"
+              />
+            </div>
           </div>
 
           <button
@@ -214,4 +233,4 @@ function CreateJob() {
 }
 
 export default CreateJob
-            
+             
