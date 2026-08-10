@@ -213,8 +213,11 @@ function JobDetail() {
         client_phone: editForm.client_phone,
         client_email: editForm.client_email,
         job_address: editForm.job_address,
+        visit_date: editForm.visit_date || null,
+        start_date: editForm.start_date || null,
+        end_date: editForm.end_date || null,
         bid_amount: editForm.bid_amount ? parseFloat(editForm.bid_amount) : null,
-        notes: editForm.notes,
+        work_description: editForm.work_description || null,
       }).eq('id', id)
       if (error) throw error
       setJob(editForm)
@@ -291,28 +294,59 @@ function JobDetail() {
             <input type="text" value={editForm.client_phone || ''} onChange={e => setEditForm(prev => ({ ...prev, client_phone: e.target.value }))} className="input-field" placeholder="Client Phone" />
             <input type="email" value={editForm.client_email || ''} onChange={e => setEditForm(prev => ({ ...prev, client_email: e.target.value }))} className="input-field" placeholder="Client Email" />
             <input type="text" value={editForm.job_address || ''} onChange={e => setEditForm(prev => ({ ...prev, job_address: e.target.value }))} className="input-field" placeholder="Job Address" />
+            
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Visit Date</label>
+                <input type="date" value={editForm.visit_date || ''} onChange={e => setEditForm(prev => ({ ...prev, visit_date: e.target.value }))} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+                <input type="date" value={editForm.start_date || ''} onChange={e => setEditForm(prev => ({ ...prev, start_date: e.target.value }))} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">End Date</label>
+                <input type="date" value={editForm.end_date || ''} onChange={e => setEditForm(prev => ({ ...prev, end_date: e.target.value }))} className="input-field" />
+              </div>
+            </div>
+
             <input type="number" step="0.01" value={editForm.bid_amount || ''} onChange={e => setEditForm(prev => ({ ...prev, bid_amount: e.target.value }))} className="input-field" placeholder="Bid Amount" />
-            <textarea value={editForm.notes || ''} onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))} className="input-field resize-none" rows={2} placeholder="Notes" />
+            
+            <textarea value={editForm.work_description || ''} onChange={e => setEditForm(prev => ({ ...prev, work_description: e.target.value }))} className="input-field resize-none" rows={3} placeholder="Work Requirement / Description" />
+            
             <div className="flex gap-2">
               <button onClick={handleSaveJobEdit} className="btn-primary flex-1">Save</button>
               <button onClick={() => { setEditingJob(false); setEditForm(job) }} className="btn-secondary flex-1">Cancel</button>
             </div>
           </div>
         ) : (
-          <div className="card">
+          <div className="card space-y-3">
             <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs text-gray-500">Start Date</p>
-                <p className="font-medium text-sm">{formatDate(job.start_date)}</p>
-              </div>
+              <h3 className="font-bold text-navy-900">Job Details</h3>
               <button onClick={() => setEditingJob(true)} className="p-2 text-gray-400 hover:text-navy-900">
                 <Pencil size={18} />
               </button>
             </div>
-            {job.notes && (
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500">Notes</p>
-                <p className="text-sm text-gray-700">{job.notes}</p>
+            
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <p className="text-xs text-gray-500">Visit Date</p>
+                <p className="font-medium">{formatDate(job.visit_date) || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Start Date</p>
+                <p className="font-medium">{formatDate(job.start_date) || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">End Date</p>
+                <p className="font-medium">{formatDate(job.end_date) || '—'}</p>
+              </div>
+            </div>
+
+            {job.work_description && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-1">Work Requirement / Description</p>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{job.work_description}</p>
               </div>
             )}
           </div>
@@ -378,28 +412,4 @@ function JobDetail() {
               ))}
               <div className="flex justify-between px-2 pt-2 border-t border-gray-200">
                 <span className="font-semibold text-sm text-gray-600">Labor Total</span>
-                <span className="font-bold text-navy-900">{formatCurrency(totalLaborCost)}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <CostSummaryBox
-          materialsCost={totalMaterialCost}
-          laborCost={totalLaborCost}
-          bidAmount={job.bid_amount}
-          profit={profit}
-          margin={margin}
-          hasBid={hasBid}
-          isProfitable={isProfitable}
-        />
-
-        <Link to={`/jobs/${id}/invoice`} className="btn-primary block text-center">
-          <FileText size={18} /> Generate Invoice PDF
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-export default JobDetail
+                <span className="font-bold text-navy-900">{formatC
