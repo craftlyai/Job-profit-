@@ -57,6 +57,18 @@ function Jobs() {
   const getJobMaterials = (jobId) => materials.filter(m => m.job_id === jobId)
   const getJobLabor = (jobId) => labor.filter(l => l.job_id === jobId)
 
+  const handleDeleteJob = async (jobId) => {
+    try {
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId)
+      if (error) throw error
+      // Refresh list after delete
+      fetchData()
+    } catch (err) {
+      console.error('Error deleting job:', err)
+      alert('Failed to delete job: ' + err.message)
+    }
+  }
+
   const filteredJobs = activeFilter === 'all'
     ? jobs
     : jobs.filter(job => job.status === activeFilter)
@@ -104,6 +116,7 @@ function Jobs() {
                 job={job}
                 materials={getJobMaterials(job.id)}
                 labor={getJobLabor(job.id)}
+                onDelete={handleDeleteJob}
               />
             ))}
           </div>
@@ -121,4 +134,4 @@ function Jobs() {
 }
 
 export default Jobs
-                                              
+      
