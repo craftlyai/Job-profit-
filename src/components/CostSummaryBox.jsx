@@ -8,7 +8,7 @@ function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, h
   return (
     <div className="bg-white rounded-2xl shadow-lg border-2 border-navy-900 p-5 sticky bottom-4 z-40 mx-0">
       <h3 className="font-bold text-navy-900 text-lg mb-3">Job Cost Summary</h3>
-
+      
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Materials Cost</span>
@@ -24,11 +24,11 @@ function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, h
             <span className="font-bold text-navy-900">{formatCurrency(totalCost)}</span>
           </div>
         </div>
-
+        
         {hasBid && (
           <>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Your Bid Amount</span>
+              <span className="text-gray-600">Final / Agreed Amount</span>
               <span className="font-semibold">{formatCurrency(bidAmount)}</span>
             </div>
             <div className="border-t-2 border-navy-900 my-2 pt-2">
@@ -51,7 +51,7 @@ function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, h
 
       {!hasBid && (
         <div className="mt-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-          <p className="text-xs text-yellow-700 text-center">No bid amount entered</p>
+          <p className="text-xs text-yellow-700 text-center">No final/agreed amount entered</p>
         </div>
       )}
 
@@ -66,3 +66,4 @@ function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, h
 }
 
 export default CostSummaryBox
+            
