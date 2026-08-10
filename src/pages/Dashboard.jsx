@@ -66,6 +66,17 @@ function Dashboard() {
   const getJobMaterials = (jobId) => materials.filter(m => m.job_id === jobId)
   const getJobLabor = (jobId) => labor.filter(l => l.job_id === jobId)
 
+  const handleDeleteJob = async (jobId) => {
+    try {
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId)
+      if (error) throw error
+      fetchData()
+    } catch (err) {
+      console.error('Error deleting job:', err)
+      alert('Failed to delete job: ' + err.message)
+    }
+  }
+
   const now = new Date()
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
@@ -143,7 +154,7 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto pb-2 mb-3 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-1 overflow-x-auto pb-2 mb-3 -mx-1 px-1">
           {statusFilters.map(filter => (
             <button
               key={filter.key}
@@ -179,6 +190,7 @@ function Dashboard() {
                 job={job}
                 materials={getJobMaterials(job.id)}
                 labor={getJobLabor(job.id)}
+                onDelete={handleDeleteJob}
               />
             ))}
           </div>
@@ -196,3 +208,4 @@ function Dashboard() {
 }
 
 export default Dashboard
+    
