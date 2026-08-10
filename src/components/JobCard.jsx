@@ -51,7 +51,7 @@ function JobCard({ job, materials = [], labor = [], onDelete }) {
 
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-gray-50 rounded-lg p-2">
-            <p className="text-xs text-gray-500">Bid Amount</p>
+            <p className="text-xs text-gray-500">Final / Agreed</p>
             <p className="font-semibold text-navy-900">{formatCurrency(job.bid_amount)}</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-2">
@@ -59,6 +59,12 @@ function JobCard({ job, materials = [], labor = [], onDelete }) {
             <p className="font-semibold text-navy-900">{formatCurrency(totalJobCost)}</p>
           </div>
         </div>
+
+        {job.estimated_amount > 0 && (
+          <div className="mb-2 px-2">
+            <p className="text-xs text-gray-400">Estimated: {formatCurrency(job.estimated_amount)}</p>
+          </div>
+        )}
 
         {hasBid && (
           <div className={`flex items-center justify-between p-2 rounded-lg mb-3 ${
@@ -107,7 +113,6 @@ function JobCard({ job, materials = [], labor = [], onDelete }) {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
@@ -142,4 +147,4 @@ function JobCard({ job, materials = [], labor = [], onDelete }) {
 }
 
 export default JobCard
-  
+            
