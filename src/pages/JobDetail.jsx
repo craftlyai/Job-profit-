@@ -216,6 +216,7 @@ function JobDetail() {
         visit_date: editForm.visit_date || null,
         start_date: editForm.start_date || null,
         end_date: editForm.end_date || null,
+        estimated_amount: editForm.estimated_amount ? parseFloat(editForm.estimated_amount) : null,
         bid_amount: editForm.bid_amount ? parseFloat(editForm.bid_amount) : null,
         work_description: editForm.work_description || null,
       }).eq('id', id)
@@ -310,8 +311,17 @@ function JobDetail() {
               </div>
             </div>
 
-            <input type="number" step="0.01" value={editForm.bid_amount || ''} onChange={e => setEditForm(prev => ({ ...prev, bid_amount: e.target.value }))} className="input-field" placeholder="Bid Amount" />
-            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Estimated Amount</label>
+                <input type="number" step="0.01" value={editForm.estimated_amount || ''} onChange={e => setEditForm(prev => ({ ...prev, estimated_amount: e.target.value }))} className="input-field" placeholder="0.00" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Final / Agreed Amount</label>
+                <input type="number" step="0.01" value={editForm.bid_amount || ''} onChange={e => setEditForm(prev => ({ ...prev, bid_amount: e.target.value }))} className="input-field" placeholder="0.00" />
+              </div>
+            </div>
+
             <textarea value={editForm.work_description || ''} onChange={e => setEditForm(prev => ({ ...prev, work_description: e.target.value }))} className="input-field resize-none" rows={3} placeholder="Work Requirement / Description" />
             
             <div className="flex gap-2">
@@ -342,6 +352,19 @@ function JobDetail() {
                 <p className="font-medium">{formatDate(job.end_date) || '—'}</p>
               </div>
             </div>
+
+            {(job.estimated_amount > 0 || job.bid_amount > 0) && (
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                <div>
+                  <p className="text-xs text-gray-500">Estimated Amount</p>
+                  <p className="font-semibold text-navy-900">{formatCurrency(job.estimated_amount)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Final / Agreed Amount</p>
+                  <p className="font-semibold text-navy-900">{formatCurrency(job.bid_amount)}</p>
+                </div>
+              </div>
+            )}
 
             {job.work_description && (
               <div className="pt-2 border-t border-gray-100">
@@ -394,22 +417,4 @@ function JobDetail() {
             </button>
           </div>
           {showLaborForm && <LaborFormInline onSave={handleAddLabor} onCancel={() => setShowLaborForm(false)} defaultRate={profile?.default_hourly_rate} />}
-          {labor.length === 0 ? (
-            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No labor entries added yet</p></div>
-          ) : (
-            <div className="space-y-2">
-              {labor.map(entry => (
-                <div key={entry.id} className="card flex justify-between items-center">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-navy-900 truncate">{entry.worker_name}</p>
-                    <p className="text-xs text-gray-500">{formatDate(entry.work_date)} — {entry.hours} hrs @ {formatCurrency(entry.hourly_rate)}/hr</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-navy-900">{formatCurrency(entry.total_cost)}</span>
-                    <button onClick={() => handleDeleteLabor(entry.id)} className="p-2 text-gray-400 hover:text-loss rounded-lg"><Trash2 size={16} /></button>
-                  </div>
-                </div>
-              ))}
-              <div className="flex justify-between px-2 pt-2 border-t border-gray-200">
-                <span className="font-semibold text-sm text-gray-600">Labor Total</span>
-                <span className="font-bold text-navy-900">{formatC
+          {lab
