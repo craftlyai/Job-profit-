@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { ArrowLeft, Trash2, Plus, FileText, ChevronDown, Pencil, X } from 'lucide-react'
 import MaterialForm from '../components/MaterialForm'
+import LabourForm from '../components/LabourForm'
 import CostSummaryBox from '../components/CostSummaryBox'
 import { calculateJobCosts, calculateProfit, formatCurrency, formatDate } from '../lib/calculations'
 
@@ -12,49 +13,6 @@ const statusOptions = [
   { value: 'invoiced', label: 'Invoiced', color: 'bg-orange-100 text-orange-700' },
   { value: 'paid', label: 'Paid', color: 'bg-green-100 text-green-700' },
 ]
-
-function LaborFormInline({ onSave, onCancel, defaultRate }) {
-  const [workerName, setWorkerName] = useState('')
-  const [hours, setHours] = useState('')
-  const [hourlyRate, setHourlyRate] = useState(defaultRate ? String(defaultRate) : '')
-  const [workDate, setWorkDate] = useState(new Date().toISOString().split('T')[0])
-
-  const total = (parseFloat(hours) || 0) * (parseFloat(hourlyRate) || 0)
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!workerName.trim() || !hours || !hourlyRate) return
-    onSave({
-      worker_name: workerName.trim(),
-      hours: parseFloat(hours),
-      hourly_rate: parseFloat(hourlyRate),
-      total_cost: total,
-      work_date: workDate
-    })
-  }
-
-  return (
-    <div className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-200">
-      <div className="flex justify-between items-center mb-3">
-        <h4 className="font-semibold text-navy-900">Add Labor</h4>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 p-1"><X size={20} /></button>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)} placeholder="Worker name" className="input-field" required />
-        <input type="date" value={workDate} onChange={e => setWorkDate(e.target.value)} className="input-field" required />
-        <div className="grid grid-cols-2 gap-2">
-          <input type="number" step="0.25" min="0" value={hours} onChange={e => setHours(e.target.value)} placeholder="Hours" className="input-field" required />
-          <input type="number" step="0.01" min="0" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="$/hr" className="input-field" required />
-        </div>
-        <div className="bg-white rounded-lg p-3 border border-gray-200 flex justify-between">
-          <span className="text-sm text-gray-500">Total</span>
-          <span className="font-bold text-navy-900">${total.toFixed(2)}</span>
-        </div>
-        <button type="submit" className="btn-primary"><Plus size={18} /> Save Labor</button>
-      </form>
-    </div>
-  )
-}
 
 function JobDetail() {
   const { id } = useParams()
@@ -145,21 +103,21 @@ function JobDetail() {
       if (error) throw error
       setShowLaborForm(false)
       fetchData()
-      showToast('Labor entry added')
+      showToast('Labour entry added')
     } catch (err) {
-      showToast('Error adding labor', 'error')
+      showToast('Error adding labour', 'error')
     }
   }
 
   const handleDeleteLabor = async (laborId) => {
-    if (!confirm('Delete this labor entry?')) return
+    if (!confirm('Delete this labour entry?')) return
     try {
       const { error } = await supabase.from('labor_entries').delete().eq('id', laborId)
       if (error) throw error
       fetchData()
-      showToast('Labor entry deleted')
+      showToast('Labour entry deleted')
     } catch (err) {
-      showToast('Error deleting labor', 'error')
+      showToast('Error deleting labour', 'error')
     }
   }
 
@@ -185,6 +143,22 @@ function JobDetail() {
     } catch (err) {
       showToast('Error updating job', 'error')
     }
+  }
+
+  const getLaborDisplay = (entry) => {
+    if (entry.calculation_method === 'per_day') {
+      const w = entry.workers || 1
+      const d = entry.days || 0
+      const r = entry.daily_rate || 0
+      return `${w} worker${w > 1 ? 's' : ''} × ${d} day${d > 1 ? 's' : ''} × ${formatCurrency(r)}/day`
+    }
+    if (entry.calculation_method === 'per_hour') {
+      const w = entry.workers || 1
+      const h = entry.hours || 0
+      const r = entry.hourly_rate || 0
+      return `${w} worker${w > 1 ? 's' : ''} × ${h} hr${h > 1 ? 's' : ''} × ${formatCurrency(r)}/hr`
+    }
+    return 'Fixed labour amount'
   }
 
   const { totalMaterialCost, totalLaborCost, totalJobCost } = calculateJobCosts(materials, labor)
@@ -371,24 +345,30 @@ function JobDetail() {
           )}
         </div>
 
-        {/* Labor */}
+        {/* Labour */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-navy-900 text-lg">Labor</h2>
+            <h2 className="font-bold text-navy-900 text-lg">Labour</h2>
             <button onClick={() => setShowLaborForm(!showLaborForm)} className="flex items-center gap-1 text-sm font-semibold text-navy-900 bg-white px-3 py-2 rounded-lg border border-gray-200">
               <Plus size={16} /> Add
             </button>
           </div>
-          {showLaborForm && <LaborFormInline onSave={handleAddLabor} onCancel={() => setShowLaborForm(false)} defaultRate={profile?.default_hourly_rate} />}
+          {showLaborForm && (
+            <LabourForm
+              onSave={handleAddLabor}
+              onCancel={() => setShowLaborForm(false)}
+              defaultRate={profile?.default_hourly_rate}
+            />
+          )}
           {labor.length === 0 ? (
-            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No labor entries added yet</p></div>
+            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No labour entries added yet</p></div>
           ) : (
             <div className="space-y-2">
               {labor.map(entry => (
                 <div key={entry.id} className="card flex justify-between items-center">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-navy-900 truncate">{entry.worker_name}</p>
-                    <p className="text-xs text-gray-500">{formatDate(entry.work_date)} — {entry.hours} hrs @ {formatCurrency(entry.hourly_rate)}/hr</p>
+                    <p className="font-semibold text-sm text-navy-900 truncate">{entry.worker_name || 'Labour'}</p>
+                    <p className="text-xs text-gray-500">{formatDate(entry.work_date)} — {getLaborDisplay(entry)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-navy-900">{formatCurrency(entry.total_cost)}</span>
@@ -397,7 +377,7 @@ function JobDetail() {
                 </div>
               ))}
               <div className="flex justify-between px-2 pt-2 border-t border-gray-200">
-                <span className="font-semibold text-sm text-gray-600">Labor Total</span>
+                <span className="font-semibold text-sm text-gray-600">Labour Total</span>
                 <span className="font-bold text-navy-900">{formatCurrency(totalLaborCost)}</span>
               </div>
             </div>
@@ -423,4 +403,4 @@ function JobDetail() {
 }
 
 export default JobDetail
-    
+                                            
