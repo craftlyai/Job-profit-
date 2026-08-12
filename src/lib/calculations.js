@@ -17,9 +17,9 @@ export const calculateLaborTotal = (hours, hourlyRate) => {
 }
 
 /**
- * Calculate all job costs from materials and labor arrays
+ * Calculate all job costs from materials, labor, and expenses arrays
  */
-export const calculateJobCosts = (materials = [], labor = []) => {
+export const calculateJobCosts = (materials = [], labor = [], expenses = []) => {
   const totalMaterialCost = materials.reduce((sum, m) => {
     return sum + (parseFloat(m.total_cost) || 0)
   }, 0)
@@ -28,11 +28,16 @@ export const calculateJobCosts = (materials = [], labor = []) => {
     return sum + (parseFloat(l.total_cost) || 0)
   }, 0)
 
-  const totalJobCost = totalMaterialCost + totalLaborCost
+  const totalExpenseCost = expenses.reduce((sum, e) => {
+    return sum + (parseFloat(e.amount) || 0)
+  }, 0)
+
+  const totalJobCost = totalMaterialCost + totalLaborCost + totalExpenseCost
 
   return {
     totalMaterialCost,
     totalLaborCost,
+    totalExpenseCost,
     totalJobCost
   }
 }
