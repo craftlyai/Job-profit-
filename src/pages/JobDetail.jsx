@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { ArrowLeft, Trash2, Plus, FileText, ChevronDown, Pencil, X } from 'lucide-react'
 import MaterialForm from '../components/MaterialForm'
 import LabourForm from '../components/LabourForm'
+import ExpenseForm from '../components/ExpenseForm'
 import CostSummaryBox from '../components/CostSummaryBox'
 import { calculateJobCosts, calculateProfit, formatCurrency, formatDate } from '../lib/calculations'
 
@@ -20,10 +21,12 @@ function JobDetail() {
   const [job, setJob] = useState(null)
   const [materials, setMaterials] = useState([])
   const [labor, setLabor] = useState([])
+  const [expenses, setExpenses] = useState([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showMaterialForm, setShowMaterialForm] = useState(false)
   const [showLaborForm, setShowLaborForm] = useState(false)
+  const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [editingJob, setEditingJob] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [toast, setToast] = useState(null)
@@ -53,6 +56,9 @@ function JobDetail() {
 
       const { data: laborData } = await supabase.from('labor_entries').select('*').eq('job_id', id).order('work_date', { ascending: true })
       setLabor(laborData || [])
+
+      const { data: expensesData } = await supabase.from('expenses').select('*').eq('job_id', id).order('created_at', { ascending: true })
+      setExpenses(expensesData || [])
     } catch (err) {
       console.error('Error:', err)
     } finally {
@@ -121,6 +127,31 @@ function JobDetail() {
     }
   }
 
+  const handleAddExpense = async (expenseData) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { error } = await supabase.from('expenses').insert([{ ...expenseData, job_id: id, user_id: user.id }])
+      if (error) throw error
+      setShowExpenseForm(false)
+      fetchData()
+      showToast('Expense added')
+    } catch (err) {
+      showToast('Error adding expense', 'error')
+    }
+  }
+
+  const handleDeleteExpense = async (expenseId) => {
+    if (!confirm('Delete this expense?')) return
+    try {
+      const { error } = await supabase.from('expenses').delete().eq('id', expenseId)
+      if (error) throw error
+      fetchData()
+      showToast('Expense deleted')
+    } catch (err) {
+      showToast('Error deleting expense', 'error')
+    }
+  }
+
   const handleSaveJobEdit = async () => {
     try {
       const { error } = await supabase.from('jobs').update({
@@ -161,7 +192,7 @@ function JobDetail() {
     return 'Fixed labour amount'
   }
 
-  const { totalMaterialCost, totalLaborCost, totalJobCost } = calculateJobCosts(materials, labor)
+  const { totalMaterialCost, totalLaborCost, totalExpenseCost, totalJobCost } = calculateJobCosts(materials, labor, expenses)
   const { profit, margin, hasBid, isProfitable } = calculateProfit(job?.bid_amount, totalJobCost)
   const currentStatus = statusOptions.find(s => s.value === job?.status)
 
@@ -384,23 +415,20 @@ function JobDetail() {
           )}
         </div>
 
-        <CostSummaryBox
-          materialsCost={totalMaterialCost}
-          laborCost={totalLaborCost}
-          bidAmount={job.bid_amount}
-          profit={profit}
-          margin={margin}
-          hasBid={hasBid}
-          isProfitable={isProfitable}
-        />
-
-        <Link to={`/jobs/${id}/invoice`} className="btn-primary block text-center">
-          <FileText size={18} /> Generate Invoice PDF
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-export default JobDetail
-                                            
+        {/* Other Expenses */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-navy-900 text-lg">Other Expenses</h2>
+            <button onClick={() => setShowExpenseForm(!showExpenseForm)} className="flex items-center gap-1 text-sm font-semibold text-navy-900 bg-white px-3 py-2 rounded-lg border border-gray-200">
+              <Plus size={16} /> Add
+            </button>
+          </div>
+          {showExpenseForm && (
+            <ExpenseForm
+              onSave={handleAddExpense}
+              onCancel={() => setShowExpenseForm(false)}
+            />
+          )}
+          {expenses.length === 0 ? (
+            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No expenses added yet</p></div>
+         
