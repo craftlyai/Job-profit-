@@ -2,8 +2,8 @@ import React from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { formatCurrency } from '../lib/calculations'
 
-function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, hasBid, isProfitable }) {
-  const totalCost = materialsCost + laborCost
+function CostSummaryBox({ materialsCost, laborCost, expensesCost, bidAmount, profit, margin, hasBid, isProfitable }) {
+  const totalCost = materialsCost + laborCost + (expensesCost || 0)
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border-2 border-navy-900 p-5 sticky bottom-4 z-40 mx-0">
@@ -15,9 +15,15 @@ function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, h
           <span className="font-semibold">{formatCurrency(materialsCost)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Labor Cost</span>
+          <span className="text-gray-600">Labour Cost</span>
           <span className="font-semibold">{formatCurrency(laborCost)}</span>
         </div>
+        {(expensesCost > 0) && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Other Expenses</span>
+            <span className="font-semibold">{formatCurrency(expensesCost)}</span>
+          </div>
+        )}
         <div className="border-t border-gray-200 my-2 pt-2">
           <div className="flex justify-between">
             <span className="font-semibold text-navy-900">Total Job Cost</span>
@@ -66,4 +72,4 @@ function CostSummaryBox({ materialsCost, laborCost, bidAmount, profit, margin, h
 }
 
 export default CostSummaryBox
-            
+                
