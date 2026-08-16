@@ -250,6 +250,11 @@ function JobDetail() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-4 space-y-6">
+        {/* ═══════════════════════════════════════════════
+            SECTION 7 — COST SUMMARY BOX (TOP)
+            ═══════════════════════════════════════════════ */}
+        <CostSummaryBox job={job} materials={materials} labor={labor} expenses={expenses} />
+
         {editingJob ? (
           <div className="card space-y-3">
             <h3 className="font-bold text-navy-900">Edit Job Details</h3>
@@ -425,10 +430,4 @@ function JobDetail() {
           </div>
           {showExpenseForm && (
             <ExpenseForm
-              onSave={handleAddExpense}
-              onCancel={() => setShowExpenseForm(false)}
-            />
-          )}
-          {expenses.length === 0 ? (
-            <div className="card text-center py-6"><p className="text-gray-400 text-sm">No expenses added yet</p></div>
-         
+              onSave={hand
